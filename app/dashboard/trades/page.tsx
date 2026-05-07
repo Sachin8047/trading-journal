@@ -11,6 +11,9 @@ type Trade = {
   entryPrice: number;
   exitPrice: number;
   quantity: number;
+  stopLoss?: number | null;
+  strategy?: string | null;
+  notes?: string | null;
 };
 
 export default function TradesPage() {
@@ -18,11 +21,11 @@ export default function TradesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [entryTime, setEntryTime] = useState("");
-const [exitTime, setExitTime] = useState("");
-const [strategy, setStrategy] = useState("");
 
-  // Fetch trades
+  // ✅ NEW: Strategy filter
+  const [selectedStrategy, setSelectedStrategy] = useState("ALL");
+
+  // 🔁 Fetch trades
   const fetchTrades = async () => {
     try {
       const res = await fetch("/api/trades");
@@ -40,15 +43,22 @@ const [strategy, setStrategy] = useState("");
     fetchTrades();
   }, [refreshKey]);
 
-  // After adding trade
+  // ✅ After adding trade
   const handleSuccess = () => {
     setShowForm(false);
     setRefreshKey((prev) => prev + 1);
   };
 
+  // ✅ FILTER LOGIC
+  const filteredTrades =
+    selectedStrategy === "ALL"
+      ? trades
+      : trades.filter((t) => t.strategy === selectedStrategy);
+
   return (
     <div className="space-y-6">
-      {/* Header */}
+
+      {/* HEADER */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">📈 Trades</h1>
 
@@ -60,23 +70,48 @@ const [strategy, setStrategy] = useState("");
         </button>
       </div>
 
-      {/* Form */}
+      {/* FORM */}
       {showForm && (
         <TradeForm
-          onClose={() => setShowForm(false)}
           onSuccess={handleSuccess}
+          onClose={() => setShowForm(false)}
         />
       )}
 
-      {/* Table */}
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow">
+      {/* 🔥 STRATEGY FILTER */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-semibold">All Trades</h2>
+
+        <select
+          value={selectedStrategy}
+          onChange={(e) => setSelectedStrategy(e.target.value)}
+          className="border px-3 py-2 rounded-lg"
+        >
+          <option value="ALL">All Strategies</option>
+
+          {[...new Set(trades.map((t) => t.strategy).filter(Boolean))].map(
+            (s: any) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            )
+          )}
+        </select>
+      </div>
+
+      {/* TABLE */}
+      <div className="glass-card">
         {loading ? (
           <p>Loading...</p>
         ) : (
-          // ✅ FIX IS HERE
-          <TradesTable trades={trades} key={refreshKey} />
+          <TradesTable
+            trades={filteredTrades}
+            onRefresh={fetchTrades}
+            key={refreshKey}
+          />
         )}
       </div>
+
     </div>
   );
 }
