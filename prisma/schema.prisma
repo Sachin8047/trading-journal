@@ -17,7 +17,6 @@ model Trade {
   stopLoss   Float
   strategy   String?
   notes      String?
-
   userEmail  String  
 
   createdAt  DateTime @default(now())
