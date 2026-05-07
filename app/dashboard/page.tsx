@@ -3,94 +3,177 @@
 import { useEffect, useState } from "react";
 import TradesTable from "@/components/TradesTable";
 
-type Trade = {
-  id: string;
-  symbol: string;
-  type: "BUY" | "SELL";
-  entryPrice: number;
-  exitPrice: number;
-  quantity: number;
-  createdAt: string;
-};
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
 
 export default function DashboardPage() {
-  const [trades, setTrades] = useState<Trade[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Fetch trades
-  const fetchTrades = async () => {
-    try {
-      const res = await fetch("/api/trades");
-      const data = await res.json();
-      setTrades(data || []);
-    } catch (err) {
-      console.error("Error fetching trades:", err);
-      setTrades([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [trades, setTrades] = useState<any[]>([]);
 
   useEffect(() => {
-    fetchTrades();
+    fetch("/api/trades")
+      .then((res) => res.json())
+      .then((data) => setTrades(data || []));
   }, []);
 
-  // Stats
+  let totalPnL = 0;
+  let wins = 0;
+  let losses = 0;
+
+  const chartData = trades.map((t, index) => {
+    const pnl =
+      t.type === "BUY"
+        ? (Number(t.exitPrice) - Number(t.entryPrice)) * Number(t.quantity)
+        : (Number(t.entryPrice) - Number(t.exitPrice)) * Number(t.quantity);
+
+    totalPnL += pnl;
+
+    if (pnl > 0) wins++;
+    else if (pnl < 0) losses++;
+
+    return {
+      name: `T${index + 1}`,
+      pnl: totalPnL,
+    };
+  });
+
   const totalTrades = trades.length;
-
-  const pnl = trades.reduce((acc, t) => {
-    const profit =
-      t.type === "BUY"
-        ? (t.exitPrice - t.entryPrice) * t.quantity
-        : (t.entryPrice - t.exitPrice) * t.quantity;
-    return acc + profit;
-  }, 0);
-
-  const wins = trades.filter((t) => {
-    const profit =
-      t.type === "BUY"
-        ? t.exitPrice > t.entryPrice
-        : t.entryPrice > t.exitPrice;
-    return profit;
-  }).length;
-
-  const losses = totalTrades - wins;
-
   const winRate =
-    totalTrades === 0 ? 0 : ((wins / totalTrades) * 100).toFixed(1);
+    totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(1) : "0";
+
+  const buyCount = trades.filter((t) => t.type === "BUY").length;
+  const sellCount = trades.filter((t) => t.type === "SELL").length;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <h1 className="text-2xl font-bold">📊 Trading Dashboard</h1>
+    <div className="space-y-8">
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <StatCard title="Total Trades" value={totalTrades} />
-        <StatCard title="Net P&L" value={`₹ ${pnl}`} />
-        <StatCard title="Win Rate" value={`${winRate}%`} />
-        <StatCard title="Wins / Losses" value={`${wins}/${losses}`} />
+      {/* HEADER */}
+      <div>
+        <h1 className="text-3xl font-bold">📊 Dashboard</h1>
+        <p className="text-gray-400 text-sm">
+          Track your trading performance
+        </p>
       </div>
 
-      {/* Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow">
-        <h2 className="text-lg font-semibold mb-4">Trades</h2>
-
-        {loading ? (
-          <p>Loading...</p>
-        ) : (
-          <TradesTable trades={trades} />
-        )}
+      {/* KPI CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card title="Total Trades" value={totalTrades} />
+        <Card
+          title="Net P&L"
+          value={`₹ ${totalPnL}`}
+          highlight={totalPnL >= 0 ? "green" : "red"}
+        />
+        <Card title="Win Rate" value={`${winRate}%`} />
+        <Card title="Wins / Losses" value={`${wins} / ${losses}`} />
       </div>
+
+      {/* CHARTS */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {/* EQUITY CURVE */}
+        <div className="lg:col-span-2 glass-card">
+          <h2 className="mb-4 font-semibold text-lg">Equity Curve</h2>
+
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={chartData}>
+              <XAxis dataKey="name" stroke="#888" />
+              <YAxis stroke="#888" />
+              <Tooltip />
+              <Line
+                type="monotone"
+                dataKey="pnl"
+                stroke="#22c55e"
+                strokeWidth={3}
+                dot={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* PIE SECTION */}
+        <div className="space-y-6">
+
+          <div className="glass-card">
+            <h2 className="mb-2 font-semibold">Win vs Loss</h2>
+            <PieChart width={250} height={200}>
+              <Pie
+                data={[
+                  { name: "Win", value: wins },
+                  { name: "Loss", value: losses },
+                ]}
+                dataKey="value"
+                outerRadius={70}
+              >
+                <Cell fill="#22c55e" />
+                <Cell fill="#ef4444" />
+              </Pie>
+              <Legend />
+            </PieChart>
+          </div>
+
+          <div className="glass-card">
+            <h2 className="mb-2 font-semibold">Trade Types</h2>
+            <PieChart width={250} height={200}>
+              <Pie
+                data={[
+                  { name: "BUY", value: buyCount },
+                  { name: "SELL", value: sellCount },
+                ]}
+                dataKey="value"
+                outerRadius={70}
+              >
+                <Cell fill="#3b82f6" />
+                <Cell fill="#f59e0b" />
+              </Pie>
+              <Legend />
+            </PieChart>
+          </div>
+
+        </div>
+      </div>
+
+      {/* TABLE */}
+      <div className="glass-card">
+        <TradesTable trades={trades} />
+      </div>
+
     </div>
   );
 }
 
-function StatCard({ title, value }: { title: string; value: any }) {
+/* 🔥 CARD COMPONENT */
+function Card({
+  title,
+  value,
+  highlight,
+}: {
+  title: string;
+  value: any;
+  highlight?: "green" | "red";
+}) {
   return (
-    <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow">
-      <p className="text-sm text-gray-500">{title}</p>
-      <h2 className="text-xl font-bold">{value}</h2>
+    <div className="glass-card p-4">
+      <p className="text-sm text-gray-400">{title}</p>
+      <h2
+        className={`text-2xl font-bold ${
+          highlight === "green"
+            ? "text-green-400"
+            : highlight === "red"
+            ? "text-red-400"
+            : ""
+        }`}
+      >
+        {value}
+      </h2>
     </div>
   );
 }
