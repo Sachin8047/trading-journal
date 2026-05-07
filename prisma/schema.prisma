@@ -14,10 +14,9 @@ model Trade {
   entryPrice Float
   exitPrice  Float
   quantity   Int
-  stopLoss   Float
+  stopLoss   Float?
   strategy   String?
   notes      String?
-  userEmail  String  
-
+  userEmail  String
   createdAt  DateTime @default(now())
 }

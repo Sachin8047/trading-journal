@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../auth/[...nextauth]/route";
 import { PrismaClient } from "@prisma/client";
+import { authOptions } from "@/lib/auth";
 
 const prisma = new PrismaClient();
 
@@ -12,7 +12,7 @@ export async function GET() {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.email) {
+    if (!session || !session.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -29,7 +29,7 @@ export async function GET() {
   } catch (error: any) {
     console.error("GET ERROR:", error);
     return NextResponse.json(
-      { error: error.message },
+      { error: error.message || "Failed to fetch trades" },
       { status: 500 }
     );
   }
@@ -42,50 +42,44 @@ export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
 
-    console.log("SESSION:", session);
-
-    if (!session?.user?.email) {
+    if (!session || !session.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await req.json();
 
-    console.log("BODY:", body);
-
     const trade = await prisma.trade.create({
       data: {
-        symbol: String(body.symbol),
-        type: String(body.type),
-        entryPrice: parseFloat(body.entryPrice),
-        exitPrice: parseFloat(body.exitPrice),
-        quantity: parseInt(body.quantity),
-
-        stopLoss: body.stopLoss ? parseFloat(body.stopLoss) : 0,
+        symbol: body.symbol,
+        type: body.type,
+        entryPrice: Number(body.entryPrice),
+        exitPrice: Number(body.exitPrice),
+        quantity: Number(body.quantity),
+        stopLoss: body.stopLoss ? Number(body.stopLoss) : null,
         strategy: body.strategy || null,
         notes: body.notes || null,
-
-        userEmail: session.user.email,
+        userEmail: session.user.email, // 🔥 CRITICAL for multi-user
       },
     });
 
     return NextResponse.json(trade);
   } catch (error: any) {
-    console.error("POST ERROR FULL:", error);
+    console.error("POST ERROR:", error);
     return NextResponse.json(
-      { error: error.message },
+      { error: error.message || "Failed to create trade" },
       { status: 500 }
     );
   }
 }
 
 /* =========================
-   PUT — Update trade
+   PUT — Update trade (SECURE)
 ========================= */
 export async function PUT(req: Request) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.email) {
+    if (!session || !session.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -93,16 +87,15 @@ export async function PUT(req: Request) {
 
     const trade = await prisma.trade.update({
       where: {
-        id: body.id, // ✅ UUID string
+        id: body.id, // string (uuid)
       },
       data: {
-        symbol: String(body.symbol),
-        type: String(body.type),
-        entryPrice: parseFloat(body.entryPrice),
-        exitPrice: parseFloat(body.exitPrice),
-        quantity: parseInt(body.quantity),
-
-        stopLoss: body.stopLoss ? parseFloat(body.stopLoss) : 0,
+        symbol: body.symbol,
+        type: body.type,
+        entryPrice: Number(body.entryPrice),
+        exitPrice: Number(body.exitPrice),
+        quantity: Number(body.quantity),
+        stopLoss: body.stopLoss ? Number(body.stopLoss) : null,
         strategy: body.strategy || null,
         notes: body.notes || null,
       },
@@ -112,20 +105,20 @@ export async function PUT(req: Request) {
   } catch (error: any) {
     console.error("PUT ERROR:", error);
     return NextResponse.json(
-      { error: error.message },
+      { error: error.message || "Failed to update trade" },
       { status: 500 }
     );
   }
 }
 
 /* =========================
-   DELETE — Delete trade
+   DELETE — Delete trade (SECURE)
 ========================= */
 export async function DELETE(req: Request) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.email) {
+    if (!session || !session.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -133,15 +126,12 @@ export async function DELETE(req: Request) {
     const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json(
-        { error: "Missing ID" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing ID" }, { status: 400 });
     }
 
     await prisma.trade.delete({
       where: {
-        id: id, // ✅ UUID string
+        id, // string uuid
       },
     });
 
@@ -149,7 +139,7 @@ export async function DELETE(req: Request) {
   } catch (error: any) {
     console.error("DELETE ERROR:", error);
     return NextResponse.json(
-      { error: error.message },
+      { error: error.message || "Failed to delete trade" },
       { status: 500 }
     );
   }
