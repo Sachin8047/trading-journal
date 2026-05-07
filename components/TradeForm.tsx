@@ -2,14 +2,7 @@
 
 import { useState } from "react";
 
-type Props = {
-  onClose: () => void;
-  onSuccess: () => void;
-};
-
-export default function TradeForm({ onClose, onSuccess }: Props) {
-  const [loading, setLoading] = useState(false);
-
+export default function TradeForm({ onSuccess }: any) {
   const [form, setForm] = useState({
     symbol: "",
     type: "BUY",
@@ -18,36 +11,33 @@ export default function TradeForm({ onClose, onSuccess }: Props) {
     quantity: "",
     stopLoss: "",
     strategy: "",
+    setup: "",
     notes: "",
+    entryTime: "",
+    exitTime: "",
+    rating: "",
+    fees: "",
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (field: string, value: any) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
+  const handleSubmit = async () => {
     try {
+      setLoading(true);
+
       const res = await fetch("/api/trades", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify(form),
       });
 
-      if (!res.ok) {
-        throw new Error("Failed to save trade");
-      }
+      if (!res.ok) throw new Error();
 
-      onSuccess(); // refresh table
-    } catch (err) {
-      console.error(err);
+      onSuccess();
+    } catch {
       alert("Error saving trade");
     } finally {
       setLoading(false);
@@ -55,118 +45,39 @@ export default function TradeForm({ onClose, onSuccess }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+    <div className="space-y-3">
+      <input placeholder="Symbol" onChange={(e) => handleChange("symbol", e.target.value)} />
       
-      {/* Modal */}
-      <div className="bg-white dark:bg-gray-900 text-black dark:text-white p-6 rounded-xl w-full max-w-lg shadow-xl">
-        
-        <h2 className="text-2xl font-bold mb-4">📊 Add New Trade</h2>
+      <select onChange={(e) => handleChange("type", e.target.value)}>
+        <option value="BUY">BUY</option>
+        <option value="SELL">SELL</option>
+      </select>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
+      <input placeholder="Entry Price" onChange={(e) => handleChange("entryPrice", e.target.value)} />
+      <input placeholder="Exit Price" onChange={(e) => handleChange("exitPrice", e.target.value)} />
+      <input placeholder="Quantity" onChange={(e) => handleChange("quantity", e.target.value)} />
+      <input placeholder="Stop Loss" onChange={(e) => handleChange("stopLoss", e.target.value)} />
 
-          {/* Symbol */}
-          <input
-            name="symbol"
-            placeholder="Symbol (e.g. NIFTY, BTC)"
-            className="w-full p-2 border rounded bg-transparent"
-            value={form.symbol}
-            onChange={handleChange}
-            required
-          />
+      <input placeholder="Strategy" onChange={(e) => handleChange("strategy", e.target.value)} />
 
-          {/* Type */}
-          <select
-            name="type"
-            className="w-full p-2 border rounded bg-transparent"
-            value={form.type}
-            onChange={handleChange}
-          >
-            <option value="BUY">BUY</option>
-            <option value="SELL">SELL</option>
-          </select>
+      <select onChange={(e) => handleChange("setup", e.target.value)}>
+        <option value="">Setup</option>
+        <option value="Breakout">Breakout</option>
+        <option value="Scalping">Scalping</option>
+        <option value="Reversal">Reversal</option>
+      </select>
 
-          {/* Entry */}
-          <input
-            name="entryPrice"
-            type="number"
-            placeholder="Entry Price"
-            className="w-full p-2 border rounded bg-transparent"
-            value={form.entryPrice}
-            onChange={handleChange}
-            required
-          />
+      <input type="datetime-local" onChange={(e) => handleChange("entryTime", e.target.value)} />
+      <input type="datetime-local" onChange={(e) => handleChange("exitTime", e.target.value)} />
 
-          {/* Exit */}
-          <input
-            name="exitPrice"
-            type="number"
-            placeholder="Exit Price"
-            className="w-full p-2 border rounded bg-transparent"
-            value={form.exitPrice}
-            onChange={handleChange}
-          />
+      <input placeholder="Rating (1-5)" onChange={(e) => handleChange("rating", e.target.value)} />
+      <input placeholder="Fees" onChange={(e) => handleChange("fees", e.target.value)} />
 
-          {/* Quantity */}
-          <input
-            name="quantity"
-            type="number"
-            placeholder="Quantity"
-            className="w-full p-2 border rounded bg-transparent"
-            value={form.quantity}
-            onChange={handleChange}
-            required
-          />
+      <textarea placeholder="Notes" onChange={(e) => handleChange("notes", e.target.value)} />
 
-          {/* Stop Loss */}
-          <input
-            name="stopLoss"
-            type="number"
-            placeholder="Stop Loss"
-            className="w-full p-2 border rounded bg-transparent"
-            value={form.stopLoss}
-            onChange={handleChange}
-          />
-
-          {/* Strategy */}
-          <input
-            name="strategy"
-            placeholder="Strategy (e.g. Breakout)"
-            className="w-full p-2 border rounded bg-transparent"
-            value={form.strategy}
-            onChange={handleChange}
-          />
-
-          {/* Notes */}
-          <input
-            name="notes"
-            placeholder="Notes"
-            className="w-full p-2 border rounded bg-transparent"
-            value={form.notes}
-            onChange={handleChange}
-          />
-
-          {/* Buttons */}
-          <div className="flex justify-between mt-4">
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded bg-gray-400 hover:bg-gray-500"
-            >
-              Cancel
-            </button>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
-            >
-              {loading ? "Saving..." : "Save Trade"}
-            </button>
-
-          </div>
-        </form>
-      </div>
+      <button onClick={handleSubmit}>
+        {loading ? "Saving..." : "Save Trade"}
+      </button>
     </div>
   );
 }

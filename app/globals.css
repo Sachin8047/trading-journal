@@ -2,11 +2,34 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ✅ GLASS CARD (clean version) */
+.glass-card {
+  @apply bg-white dark:bg-gray-900 rounded-xl shadow p-4;
+}
 
+/* OPTIONAL: If you want glass effect instead of normal card */
+/*
 .glass-card {
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(12px);
   border-radius: 16px;
   padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+*/
+
+/* ✅ CALENDAR */
+.react-calendar {
+  width: 100%;
+  border: none;
+  font-family: inherit;
+}
+
+.react-calendar__tile--active {
+  background: #3b82f6 !important;
+  color: white;
+}
+
+.react-calendar__tile:hover {
+  background: #e5e7eb;
 }

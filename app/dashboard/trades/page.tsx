@@ -18,6 +18,9 @@ export default function TradesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [entryTime, setEntryTime] = useState("");
+const [exitTime, setExitTime] = useState("");
+const [strategy, setStrategy] = useState("");
 
   // Fetch trades
   const fetchTrades = async () => {

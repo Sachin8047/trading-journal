@@ -8,15 +8,30 @@ datasource db {
 }
 
 model Trade {
-  id         String   @id @default(uuid())
-  symbol     String
-  type       String
-  entryPrice Float
-  exitPrice  Float
-  quantity   Int
-  stopLoss   Float?
-  strategy   String?
-  notes      String?
-  userEmail  String
-  createdAt  DateTime @default(now())
+  id          String   @id @default(uuid())
+  symbol      String
+  type        String
+
+  entryPrice  Float
+  exitPrice   Float
+  quantity    Int
+
+  entryTime   DateTime?
+  exitTime    DateTime?
+
+  stopLoss    Float?
+  strategy    String?
+  setup       String?
+  notes       String?
+
+  rating      Int?
+
+  // 🔥 ADVANCED
+  fees        Float?      // commission
+  risk        Float?      // risk per trade
+  rMultiple   Float?      // reward / risk
+  roi         Float?      // %
+
+  userEmail   String
+  createdAt   DateTime @default(now())
 }

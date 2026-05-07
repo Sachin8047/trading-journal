@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { PrismaClient } from "@prisma/client";
-import { authOptions } from "@/lib/auth";
 
 const prisma = new PrismaClient();
 
@@ -10,7 +9,7 @@ const prisma = new PrismaClient();
 ========================= */
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
 
     if (!session || !session.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -29,18 +28,18 @@ export async function GET() {
   } catch (error: any) {
     console.error("GET ERROR:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to fetch trades" },
+      { error: error.message },
       { status: 500 }
     );
   }
 }
 
 /* =========================
-   POST — Add new trade
+   POST — Create trade
 ========================= */
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
 
     if (!session || !session.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -48,17 +47,60 @@ export async function POST(req: Request) {
 
     const body = await req.json();
 
+    const entry = Number(body.entryPrice);
+    const exit = Number(body.exitPrice);
+    const qty = Number(body.quantity);
+    const stopLoss = body.stopLoss ? Number(body.stopLoss) : null;
+
+    // 🔥 P&L
+    const pnl =
+      body.type === "BUY"
+        ? (exit - entry) * qty
+        : (entry - exit) * qty;
+
+    // 🔥 ROI
+    const invested = entry * qty;
+    const roi = invested ? (pnl / invested) * 100 : 0;
+
+    // 🔥 Risk
+    const risk =
+      stopLoss !== null
+        ? Math.abs(entry - stopLoss) * qty
+        : null;
+
+    // 🔥 R-Multiple
+    const rMultiple =
+      risk && risk !== 0 ? pnl / risk : null;
+
     const trade = await prisma.trade.create({
       data: {
         symbol: body.symbol,
         type: body.type,
-        entryPrice: Number(body.entryPrice),
-        exitPrice: Number(body.exitPrice),
-        quantity: Number(body.quantity),
-        stopLoss: body.stopLoss ? Number(body.stopLoss) : null,
+
+        entryPrice: entry,
+        exitPrice: exit,
+        quantity: qty,
+
+        stopLoss,
         strategy: body.strategy || null,
+        setup: body.setup || null,
         notes: body.notes || null,
-        userEmail: session.user.email, // 🔥 IMPORTANT
+
+        entryTime: body.entryTime
+          ? new Date(body.entryTime)
+          : null,
+        exitTime: body.exitTime
+          ? new Date(body.exitTime)
+          : null,
+
+        rating: body.rating ? Number(body.rating) : null,
+        fees: body.fees ? Number(body.fees) : null,
+
+        risk,
+        rMultiple,
+        roi,
+
+        userEmail: session.user.email,
       },
     });
 
@@ -66,7 +108,7 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error("POST ERROR:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to create trade" },
+      { error: error.message },
       { status: 500 }
     );
   }
@@ -77,7 +119,7 @@ export async function POST(req: Request) {
 ========================= */
 export async function PUT(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
 
     if (!session || !session.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -85,26 +127,64 @@ export async function PUT(req: Request) {
 
     const body = await req.json();
 
+    const entry = Number(body.entryPrice);
+    const exit = Number(body.exitPrice);
+    const qty = Number(body.quantity);
+    const stopLoss = body.stopLoss ? Number(body.stopLoss) : null;
+
+    const pnl =
+      body.type === "BUY"
+        ? (exit - entry) * qty
+        : (entry - exit) * qty;
+
+    const invested = entry * qty;
+    const roi = invested ? (pnl / invested) * 100 : 0;
+
+    const risk =
+      stopLoss !== null
+        ? Math.abs(entry - stopLoss) * qty
+        : null;
+
+    const rMultiple =
+      risk && risk !== 0 ? pnl / risk : null;
+
     const updated = await prisma.trade.updateMany({
       where: {
-        id: body.id,
-        userEmail: session.user.email, // 🔐 SECURITY CHECK
+        id: body.id, // UUID string
+        userEmail: session.user.email, // 🔒 SECURITY
       },
       data: {
         symbol: body.symbol,
         type: body.type,
-        entryPrice: Number(body.entryPrice),
-        exitPrice: Number(body.exitPrice),
-        quantity: Number(body.quantity),
-        stopLoss: body.stopLoss ? Number(body.stopLoss) : null,
+
+        entryPrice: entry,
+        exitPrice: exit,
+        quantity: qty,
+
+        stopLoss,
         strategy: body.strategy || null,
+        setup: body.setup || null,
         notes: body.notes || null,
+
+        entryTime: body.entryTime
+          ? new Date(body.entryTime)
+          : null,
+        exitTime: body.exitTime
+          ? new Date(body.exitTime)
+          : null,
+
+        rating: body.rating ? Number(body.rating) : null,
+        fees: body.fees ? Number(body.fees) : null,
+
+        risk,
+        rMultiple,
+        roi,
       },
     });
 
     if (updated.count === 0) {
       return NextResponse.json(
-        { error: "Trade not found or not authorized" },
+        { error: "Trade not found or unauthorized" },
         { status: 404 }
       );
     }
@@ -113,18 +193,18 @@ export async function PUT(req: Request) {
   } catch (error: any) {
     console.error("PUT ERROR:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to update trade" },
+      { error: error.message },
       { status: 500 }
     );
   }
 }
 
 /* =========================
-   DELETE — Delete trade (SECURE)
+   DELETE — Remove trade (SECURE)
 ========================= */
 export async function DELETE(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
 
     if (!session || !session.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -134,28 +214,33 @@ export async function DELETE(req: Request) {
     const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json({ error: "Missing ID" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing ID" },
+        { status: 400 }
+      );
     }
 
     const deleted = await prisma.trade.deleteMany({
       where: {
         id,
-        userEmail: session.user.email, // 🔐 SECURITY CHECK
+        userEmail: session.user.email, // 🔒 SECURITY
       },
     });
 
     if (deleted.count === 0) {
       return NextResponse.json(
-        { error: "Trade not found or not authorized" },
+        { error: "Trade not found or unauthorized" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ message: "Deleted successfully" });
+    return NextResponse.json({
+      message: "Deleted successfully",
+    });
   } catch (error: any) {
     console.error("DELETE ERROR:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to delete trade" },
+      { error: error.message },
       { status: 500 }
     );
   }
