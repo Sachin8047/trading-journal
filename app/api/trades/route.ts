@@ -50,9 +50,11 @@ export async function POST(req: Request) {
     const entry = Number(body.entryPrice);
     const exit = Number(body.exitPrice);
     const qty = Number(body.quantity);
-    const stopLoss = body.stopLoss ? Number(body.stopLoss) : null;
 
-    // 🔥 P&L
+    const stopLoss = body.stopLoss ? Number(body.stopLoss) : null;
+    const tpLevels = body.tpLevels || [];
+
+    // 🔥 PnL
     const pnl =
       body.type === "BUY"
         ? (exit - entry) * qty
@@ -68,9 +70,23 @@ export async function POST(req: Request) {
         ? Math.abs(entry - stopLoss) * qty
         : null;
 
+    // 🔥 Reward (NEW)
+    const avgTP =
+      tpLevels.length > 0
+        ? tpLevels.reduce((a: number, b: number) => a + b, 0) /
+          tpLevels.length
+        : null;
+
+    const reward =
+      avgTP !== null
+        ? Math.abs(avgTP - entry) * qty
+        : null;
+
     // 🔥 R-Multiple
     const rMultiple =
-      risk && risk !== 0 ? pnl / risk : null;
+      risk && risk !== 0 && reward !== null
+        ? reward / risk
+        : null;
 
     const trade = await prisma.trade.create({
       data: {
@@ -82,6 +98,13 @@ export async function POST(req: Request) {
         quantity: qty,
 
         stopLoss,
+        tpLevels,
+
+        risk,
+        reward,
+        rMultiple,
+        roi,
+
         strategy: body.strategy || null,
         setup: body.setup || null,
         notes: body.notes || null,
@@ -94,11 +117,6 @@ export async function POST(req: Request) {
           : null,
 
         rating: body.rating ? Number(body.rating) : null,
-        fees: body.fees ? Number(body.fees) : null,
-
-        risk,
-        rMultiple,
-        roi,
 
         userEmail: session.user.email,
       },
@@ -108,7 +126,7 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error("POST ERROR:", error);
     return NextResponse.json(
-      { error: error.message },
+      { error: error.message || "Failed to create trade" },
       { status: 500 }
     );
   }

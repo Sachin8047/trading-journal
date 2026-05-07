@@ -2,12 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ✅ GLASS CARD (clean version) */
+/* =========================
+   🎨 GLASS CARD (CLEAN UI)
+========================= */
+
 .glass-card {
-  @apply bg-white dark:bg-gray-900 rounded-xl shadow p-4;
+  @apply bg-white dark:bg-gray-900 rounded-xl shadow-md p-4 border border-gray-200 dark:border-gray-800;
 }
 
-/* OPTIONAL: If you want glass effect instead of normal card */
+/* =========================
+   🔥 OPTIONAL GLASS EFFECT (UNCOMMENT IF NEEDED)
+========================= */
+
 /*
 .glass-card {
   background: rgba(255, 255, 255, 0.05);
@@ -18,11 +24,21 @@
 }
 */
 
-/* ✅ CALENDAR */
+/* =========================
+   📅 CALENDAR STYLING
+========================= */
+
 .react-calendar {
   width: 100%;
   border: none;
   font-family: inherit;
+  background: transparent;
+}
+
+.react-calendar__tile {
+  border-radius: 8px;
+  padding: 10px 6px;
+  transition: all 0.2s ease;
 }
 
 .react-calendar__tile--active {
@@ -32,4 +48,22 @@
 
 .react-calendar__tile:hover {
   background: #e5e7eb;
+}
+
+.dark .react-calendar__tile:hover {
+  background: #374151;
+}
+
+/* =========================
+   💰 P&L COLORS (GLOBAL)
+========================= */
+
+.pnl-positive {
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.pnl-negative {
+  color: #ef4444;
+  font-weight: 600;
 }
