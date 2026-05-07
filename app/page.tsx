@@ -1,15 +1,12 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export default async function Home() {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession(); // ✅ NO authOptions
 
-  // ❌ Not logged in → go to login page
   if (!session) {
     redirect("/login");
   }
 
-  // ✅ Logged in → go to dashboard
   redirect("/dashboard");
 }
