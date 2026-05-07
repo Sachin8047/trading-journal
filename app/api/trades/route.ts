@@ -58,7 +58,7 @@ export async function POST(req: Request) {
         stopLoss: body.stopLoss ? Number(body.stopLoss) : null,
         strategy: body.strategy || null,
         notes: body.notes || null,
-        userEmail: session.user.email, // 🔥 CRITICAL for multi-user
+        userEmail: session.user.email, // 🔥 IMPORTANT
       },
     });
 
@@ -85,9 +85,10 @@ export async function PUT(req: Request) {
 
     const body = await req.json();
 
-    const trade = await prisma.trade.update({
+    const updated = await prisma.trade.updateMany({
       where: {
-        id: body.id, // string (uuid)
+        id: body.id,
+        userEmail: session.user.email, // 🔐 SECURITY CHECK
       },
       data: {
         symbol: body.symbol,
@@ -101,7 +102,14 @@ export async function PUT(req: Request) {
       },
     });
 
-    return NextResponse.json(trade);
+    if (updated.count === 0) {
+      return NextResponse.json(
+        { error: "Trade not found or not authorized" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ message: "Updated successfully" });
   } catch (error: any) {
     console.error("PUT ERROR:", error);
     return NextResponse.json(
@@ -129,11 +137,19 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: "Missing ID" }, { status: 400 });
     }
 
-    await prisma.trade.delete({
+    const deleted = await prisma.trade.deleteMany({
       where: {
-        id, // string uuid
+        id,
+        userEmail: session.user.email, // 🔐 SECURITY CHECK
       },
     });
+
+    if (deleted.count === 0) {
+      return NextResponse.json(
+        { error: "Trade not found or not authorized" },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({ message: "Deleted successfully" });
   } catch (error: any) {
