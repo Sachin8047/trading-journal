@@ -16,8 +16,17 @@ import {
   Legend,
 } from "recharts";
 
+type Trade = {
+  id: string;
+  symbol: string;
+  type: string;
+  entryPrice: number;
+  exitPrice: number;
+  quantity: number;
+};
+
 export default function DashboardPage() {
-  const [trades, setTrades] = useState<any[]>([]);
+  const [trades, setTrades] = useState<Trade[]>([]);
 
   useEffect(() => {
     fetch("/api/trades")
@@ -80,7 +89,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* EQUITY CURVE */}
-        <div className="lg:col-span-2 glass-card">
+        <div className="lg:col-span-2 glass-card p-4">
           <h2 className="mb-4 font-semibold text-lg">Equity Curve</h2>
 
           <ResponsiveContainer width="100%" height={300}>
@@ -99,10 +108,11 @@ export default function DashboardPage() {
           </ResponsiveContainer>
         </div>
 
-        {/* PIE SECTION */}
+        {/* PIE CHARTS */}
         <div className="space-y-6">
 
-          <div className="glass-card">
+          {/* WIN VS LOSS */}
+          <div className="glass-card p-4">
             <h2 className="mb-2 font-semibold">Win vs Loss</h2>
             <PieChart width={250} height={200}>
               <Pie
@@ -120,7 +130,8 @@ export default function DashboardPage() {
             </PieChart>
           </div>
 
-          <div className="glass-card">
+          {/* TRADE TYPES */}
+          <div className="glass-card p-4">
             <h2 className="mb-2 font-semibold">Trade Types</h2>
             <PieChart width={250} height={200}>
               <Pie
@@ -142,15 +153,14 @@ export default function DashboardPage() {
       </div>
 
       {/* TABLE */}
-      <div className="glass-card">
-        <TradesTable trades={trades} />
-      </div>
+      <div className="glass-card p-4">
+<TradesTable trades={trades} onRefresh={() => window.location.reload()} />      </div>
 
     </div>
   );
 }
 
-/* 🔥 CARD COMPONENT */
+/* CARD COMPONENT */
 function Card({
   title,
   value,

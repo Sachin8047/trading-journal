@@ -1,85 +1,199 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-export default function TradesTable({ trades }: any) {
-  const [data, setData] = useState(trades || []);
+type Trade = {
+  id: string;
+  symbol: string;
+  type: string;
+  entryPrice: number;
+  exitPrice: number;
+  quantity: number;
+  stopLoss?: number | null;
+  strategy?: string | null;
+  notes?: string | null;
+};
 
-  useEffect(() => {
-    setData(trades || []);
-  }, [trades]);
+type Props = {
+  trades: Trade[];
+  onRefresh?: () => void; // 🔥 important
+};
 
-  // 🗑 DELETE FUNCTION
-  const handleDelete = async (id: number) => {
-    if (!confirm("Delete this trade?")) return;
+export default function TradesTable({ trades, onRefresh }: Props) {
+  const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
 
-    await fetch(`/api/trades/${id}`, {
-      method: "DELETE",
+  const calculatePnL = (t: Trade) => {
+    return t.type === "BUY"
+      ? (t.exitPrice - t.entryPrice) * t.quantity
+      : (t.entryPrice - t.exitPrice) * t.quantity;
+  };
+
+  // ❌ DELETE
+  const deleteTrade = async (id: string) => {
+    await fetch(`/api/trades?id=${id}`, { method: "DELETE" });
+    onRefresh?.();
+  };
+
+  // 💾 SAVE EDIT
+  const saveEdit = async () => {
+    if (!editingTrade) return;
+
+    await fetch("/api/trades", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editingTrade),
     });
 
-    setData((prev: any) => prev.filter((t: any) => t.id !== id));
+    setEditingTrade(null);
+    onRefresh?.();
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow">
-      <h2 className="mb-4 font-semibold">Trades</h2>
-
-      <table className="w-full text-sm">
+    <>
+      <table className="w-full border">
         <thead>
-          <tr className="text-left border-b">
+          <tr className="bg-gray-100">
             <th>Symbol</th>
             <th>Type</th>
             <th>Entry</th>
             <th>Exit</th>
             <th>Qty</th>
+            <th>Stop Loss</th>
+            <th>Strategy</th>
+            <th>Notes</th>
             <th>P&L</th>
             <th>Actions</th>
           </tr>
         </thead>
 
         <tbody>
-          {data.map((t: any) => {
-            const pnl =
-              t.type === "BUY"
-                ? (t.exitPrice - t.entryPrice) * t.quantity
-                : (t.entryPrice - t.exitPrice) * t.quantity;
+          {trades.map((t) => (
+            <tr key={t.id} className="text-center border-t">
+              <td>{t.symbol}</td>
+              <td>{t.type}</td>
+              <td>{t.entryPrice}</td>
+              <td>{t.exitPrice}</td>
+              <td>{t.quantity}</td>
 
-            return (
-              <tr key={t.id} className="border-b">
-                <td>{t.symbol}</td>
-                <td>{t.type}</td>
-                <td>{t.entryPrice}</td>
-                <td>{t.exitPrice}</td>
-                <td>{t.quantity}</td>
-                <td
-                  className={
-                    pnl >= 0 ? "text-green-500" : "text-red-500"
-                  }
+              <td>{t.stopLoss ?? "-"}</td>
+              <td>{t.strategy ?? "-"}</td>
+              <td>{t.notes ?? "-"}</td>
+
+              <td
+                className={
+                  calculatePnL(t) >= 0
+                    ? "text-green-600"
+                    : "text-red-600"
+                }
+              >
+                {calculatePnL(t)}
+              </td>
+
+              <td className="space-x-2">
+                <button
+                  onClick={() => setEditingTrade(t)}
+                  className="bg-yellow-500 text-white px-2 py-1 rounded"
                 >
-                  {pnl}
-                </td>
+                  Edit
+                </button>
 
-                {/* 🔥 ACTION BUTTONS */}
-                <td className="space-x-2">
-                  <button
-                    className="px-2 py-1 bg-yellow-500 text-white rounded"
-                    onClick={() => alert("Edit feature next step 😉")}
-                  >
-                    Edit
-                  </button>
-
-                  <button
-                    onClick={() => handleDelete(t.id)}
-                    className="px-2 py-1 bg-red-500 text-white rounded"
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
+                <button
+                  onClick={() => deleteTrade(t.id)}
+                  className="bg-red-500 text-white px-2 py-1 rounded"
+                >
+                  Delete
+                </button>
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
-    </div>
+
+      {/* ✏️ EDIT MODAL */}
+      {editingTrade && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
+          <div className="bg-white p-6 rounded w-[400px]">
+            <h2 className="text-lg font-bold mb-4">Edit Trade</h2>
+
+            <input
+              className="border p-2 w-full mb-2"
+              value={editingTrade.symbol}
+              onChange={(e) =>
+                setEditingTrade({
+                  ...editingTrade,
+                  symbol: e.target.value,
+                })
+              }
+            />
+
+            <select
+              className="border p-2 w-full mb-2"
+              value={editingTrade.type}
+              onChange={(e) =>
+                setEditingTrade({
+                  ...editingTrade,
+                  type: e.target.value,
+                })
+              }
+            >
+              <option value="BUY">BUY</option>
+              <option value="SELL">SELL</option>
+            </select>
+
+            <input
+              type="number"
+              className="border p-2 w-full mb-2"
+              value={editingTrade.entryPrice}
+              onChange={(e) =>
+                setEditingTrade({
+                  ...editingTrade,
+                  entryPrice: Number(e.target.value),
+                })
+              }
+            />
+
+            <input
+              type="number"
+              className="border p-2 w-full mb-2"
+              value={editingTrade.exitPrice}
+              onChange={(e) =>
+                setEditingTrade({
+                  ...editingTrade,
+                  exitPrice: Number(e.target.value),
+                })
+              }
+            />
+
+            <input
+              type="number"
+              className="border p-2 w-full mb-2"
+              value={editingTrade.quantity}
+              onChange={(e) =>
+                setEditingTrade({
+                  ...editingTrade,
+                  quantity: Number(e.target.value),
+                })
+              }
+            />
+
+            <div className="flex justify-between mt-4">
+              <button
+                onClick={() => setEditingTrade(null)}
+                className="bg-gray-400 px-3 py-1 rounded"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={saveEdit}
+                className="bg-blue-600 text-white px-3 py-1 rounded"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
