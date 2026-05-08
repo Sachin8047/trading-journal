@@ -273,9 +273,9 @@ export default function DashboardPage() {
           </h2>
 
           <p className="mt-2 text-lg font-semibold">
-            ₹{" "}
-            (bestStrategy?.[1] as any)?.pnl?.toFixed(2) || "0"
-          </p>
+  ₹{" "}
+  {(bestStrategy?.[1] as any)?.pnl?.toFixed(2) || "0"}
+</p>
         </div>
 
         <div className="glass-card">
@@ -288,9 +288,9 @@ export default function DashboardPage() {
           </h2>
 
           <p className="mt-2 text-lg font-semibold">
-            ₹{" "}
-            (worstStrategy?.[1] as any)?.pnl?.toFixed(2) || "0"
-          </p>
+  ₹{" "}
+  {(worstStrategy?.[1] as any)?.pnl?.toFixed(2) || "0"}
+</p>
         </div>
 
       </div>
