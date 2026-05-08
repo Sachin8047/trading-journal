@@ -12,47 +12,53 @@ html {
 
 body {
   @apply bg-gray-100 text-gray-900;
-  font-family: Inter, sans-serif;
+}
+
+.dark body {
+  @apply bg-[#0b1120] text-gray-100;
 }
 
 /* =========================
-   CARD UI
+   GLASS CARD
 ========================= */
 
 .glass-card {
-  @apply bg-white rounded-2xl shadow-sm border border-gray-200 p-5 transition-all;
+  @apply bg-white border border-gray-200 rounded-2xl shadow-sm p-5;
 }
 
-.glass-card:hover {
-  @apply shadow-md;
-}
-
-/* =========================
-   HEADINGS
-========================= */
-
-.dashboard-title {
-  @apply text-3xl font-bold tracking-tight;
-}
-
-.section-title {
-  @apply text-lg font-semibold;
+.dark .glass-card {
+  background: #111827;
+  border: 1px solid #1f2937;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
 }
 
 /* =========================
-   TABLE
+   INPUTS
 ========================= */
 
-.table-wrapper {
-  @apply bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden;
+input,
+select,
+textarea {
+  @apply w-full rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm outline-none transition;
 }
 
-.table-header {
-  @apply bg-gray-50 text-gray-500 text-sm uppercase tracking-wide;
+input:focus,
+select:focus,
+textarea:focus {
+  @apply border-blue-500 ring-2 ring-blue-200;
 }
 
-.table-cell {
-  @apply px-4 py-3;
+.dark input,
+.dark select,
+.dark textarea {
+  background: #0f172a;
+  border: 1px solid #334155;
+  color: white;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #94a3b8;
 }
 
 /* =========================
@@ -60,23 +66,43 @@ body {
 ========================= */
 
 .btn-primary {
-  @apply bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl transition;
+  @apply bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-2 font-medium transition;
 }
 
 .btn-danger {
-  @apply bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg;
-}
-
-.btn-warning {
-  @apply bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-lg;
+  @apply bg-red-500 hover:bg-red-600 text-white rounded-xl px-4 py-2 transition;
 }
 
 /* =========================
-   INPUTS
+   TABLE
 ========================= */
 
-.input {
-  @apply border border-gray-300 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500;
+table {
+  @apply w-full border-collapse;
+}
+
+thead {
+  @apply bg-gray-100;
+}
+
+.dark thead {
+  background: #1e293b;
+}
+
+th {
+  @apply text-left text-sm font-semibold text-gray-600 p-3;
+}
+
+.dark th {
+  color: #cbd5e1;
+}
+
+td {
+  @apply p-3 text-sm border-t border-gray-100;
+}
+
+.dark td {
+  border-color: #1e293b;
 }
 
 /* =========================
@@ -84,11 +110,13 @@ body {
 ========================= */
 
 .pnl-positive {
-  @apply text-green-500 font-semibold;
+  color: #22c55e;
+  font-weight: 700;
 }
 
 .pnl-negative {
-  @apply text-red-500 font-semibold;
+  color: #ef4444;
+  font-weight: 700;
 }
 
 /* =========================
@@ -99,18 +127,41 @@ body {
   width: 100%;
   border: none;
   background: transparent;
+  font-family: inherit;
 }
 
 .react-calendar__tile {
   border-radius: 10px;
-  padding: 12px 6px;
+  padding: 10px 6px;
+  transition: 0.2s;
+}
+
+.react-calendar__tile:hover {
+  background: #e5e7eb;
+}
+
+.dark .react-calendar__tile:hover {
+  background: #1e293b;
 }
 
 .react-calendar__tile--active {
   background: #2563eb !important;
-  color: white;
+  color: white !important;
 }
 
-.react-calendar__tile:hover {
-  background: #f3f4f6;
+/* =========================
+   SCROLLBAR
+========================= */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
 }
