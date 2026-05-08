@@ -20,7 +20,7 @@ export default function DashboardLayout({
     }`;
 
   return (
-    <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900 text-black dark:text-white">
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-black dark:text-white overflow-hidden">
       
       {/* Sidebar */}
       <aside className="w-64 bg-white dark:bg-gray-800 p-5 shadow-lg flex flex-col justify-between">
@@ -39,7 +39,7 @@ export default function DashboardLayout({
           </nav>
         </div>
 
-        {/* Bottom section */}
+        {/* Bottom */}
         <div className="space-y-4">
           <ThemeToggle />
 
@@ -52,8 +52,13 @@ export default function DashboardLayout({
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 p-6">{children}</main>
+      {/* Main Content (SCROLL FIX HERE) */}
+      <main className="flex-1 p-6 overflow-hidden">
+        <div className="h-full overflow-y-auto">
+          {children}
+        </div>
+      </main>
+
     </div>
   );
 }

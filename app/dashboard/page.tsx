@@ -2,22 +2,9 @@
 
 import { useEffect, useState } from "react";
 import TradesTable from "@/components/TradesTable";
-import TradeForm from "@/components/TradeForm";
 import PNLCalendar from "@/components/PNLCalendar";
 import WeeklySummary from "@/components/WeeklySummary";
-import TradingChart from "@/components/TradingChart";
-import StrategySummary from "@/components/StrategySummary";
-
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-} from "recharts";
+import StrategyStats from "@/components/StrategyStats";
 
 type Trade = {
   id: string;
@@ -26,23 +13,17 @@ type Trade = {
   entryPrice: number;
   exitPrice: number;
   quantity: number;
+  stopLoss?: number;
   strategy?: string | null;
   createdAt?: string;
 };
 
 export default function DashboardPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
-  const [showForm, setShowForm] = useState(false);
 
-  // ✅ STRATEGY FILTER
   const [selectedStrategy, setSelectedStrategy] = useState("ALL");
+  const [selectedSymbol, setSelectedSymbol] = useState("ALL");
 
-  // 🔥 SYMBOL FILTER
-  const [selectedSymbol, setSelectedSymbol] = useState("RELIANCE.NS");
-
-  // =========================
-  // FETCH TRADES
-  // =========================
   const fetchTrades = async () => {
     const res = await fetch("/api/trades");
     const data = await res.json();
@@ -53,126 +34,161 @@ export default function DashboardPage() {
     fetchTrades();
   }, []);
 
-  // =========================
-  // STRATEGY LIST (AUTO)
-  // =========================
-  const strategies = [
-    "ALL",
-    ...new Set(trades.map((t) => t.strategy).filter(Boolean)),
-  ];
-
-  // =========================
-  // FILTER
-  // =========================
-  const filteredTrades =
-    selectedStrategy === "ALL"
-      ? trades
-      : trades.filter((t) => t.strategy === selectedStrategy);
-
-  // =========================
-  // KPI CALCULATIONS
-  // =========================
-  const totalTrades = filteredTrades.length;
-
-  const tradePnls = filteredTrades.map((t) =>
-    t.type === "BUY"
-      ? (t.exitPrice - t.entryPrice) * t.quantity
-      : (t.entryPrice - t.exitPrice) * t.quantity
-  );
-
-  const totalPnl = tradePnls.reduce((acc, val) => acc + val, 0);
-
-  const wins = tradePnls.filter((p) => p > 0).length;
-  const winRate = totalTrades
-    ? ((wins / totalTrades) * 100).toFixed(1)
-    : "0";
-
-  const avgPnl = totalTrades ? totalPnl / totalTrades : 0;
-
-  // =========================
-  // EQUITY CURVE
-  // =========================
-  let running = 0;
-  const equityData = tradePnls.map((p, i) => {
-    running += p;
-    return { name: `T${i + 1}`, pnl: running };
+  // FILTERED TRADES
+  const filteredTrades = trades.filter((t) => {
+    return (
+      (selectedStrategy === "ALL" || t.strategy === selectedStrategy) &&
+      (selectedSymbol === "ALL" || t.symbol === selectedSymbol)
+    );
   });
 
-  // =========================
-  // DAILY P&L
-  // =========================
-  const dailyMap: Record<string, number> = {};
+  // CALCULATIONS
+  let totalPnl = 0;
+  let wins = 0;
 
   filteredTrades.forEach((t) => {
-    const date = new Date(t.createdAt || "").toDateString();
-
     const pnl =
       t.type === "BUY"
         ? (t.exitPrice - t.entryPrice) * t.quantity
         : (t.entryPrice - t.exitPrice) * t.quantity;
 
-    dailyMap[date] = (dailyMap[date] || 0) + pnl;
+    totalPnl += pnl;
+
+    if (pnl > 0) wins++;
   });
 
-  const dailyData = Object.keys(dailyMap).map((d) => ({
-    date: d,
-    pnl: dailyMap[d],
-  }));
+  const totalTrades = filteredTrades.length;
 
-  // =========================
-  // UI
-  // =========================
+  const winRate =
+    totalTrades > 0
+      ? ((wins / totalTrades) * 100).toFixed(1)
+      : "0";
+
+  const avgPnl =
+    totalTrades > 0
+      ? (totalPnl / totalTrades).toFixed(2)
+      : "0";
+
+  // BEST / WORST STRATEGY
+  const strategyMap: any = {};
+
+  filteredTrades.forEach((trade) => {
+    const strategy = trade.strategy || "No Strategy";
+
+    const pnl =
+      trade.type === "BUY"
+        ? (trade.exitPrice - trade.entryPrice) * trade.quantity
+        : (trade.entryPrice - trade.exitPrice) * trade.quantity;
+
+    if (!strategyMap[strategy]) {
+      strategyMap[strategy] = 0;
+    }
+
+    strategyMap[strategy] += pnl;
+  });
+
+  const strategyEntries = Object.entries(strategyMap);
+
+  const bestStrategy =
+    strategyEntries.length > 0
+      ? strategyEntries.reduce((a: any, b: any) =>
+          a[1] > b[1] ? a : b
+        )
+      : null;
+
+  const worstStrategy =
+    strategyEntries.length > 0
+      ? strategyEntries.reduce((a: any, b: any) =>
+          a[1] < b[1] ? a : b
+        )
+      : null;
+
+  // FILTER OPTIONS
+  const strategies = [
+    "ALL",
+    ...new Set(trades.map((t) => t.strategy).filter(Boolean)),
+  ];
+
+  const symbols = [
+    "ALL",
+    ...new Set(trades.map((t) => t.symbol)),
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+
       {/* HEADER */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+
         <div>
-          <h1 className="text-2xl font-semibold">📊 Dashboard</h1>
-          <p className="text-sm text-gray-400">
-            Track your performance
+          <h1 className="dashboard-title">
+            📊 Dashboard
+          </h1>
+
+          <p className="text-gray-500 mt-1">
+            Track your trading performance
           </p>
         </div>
 
-        <div className="flex gap-3 items-center">
-          {/* 🔥 STRATEGY DROPDOWN */}
-          <select
-            value={selectedStrategy}
-            onChange={(e) => setSelectedStrategy(e.target.value)}
-            className="border px-3 py-2 rounded-md text-sm bg-white dark:bg-gray-900"
-          >
-            {strategies.map((s: any) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+        {/* FILTERS */}
+        <div className="flex gap-3">
 
-          <button
-            onClick={() => setShowForm(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md"
-          >
-            + Add Trade
-          </button>
+          <div>
+            <p className="text-xs text-gray-500 mb-1">
+              Strategy
+            </p>
+
+            <select
+              value={selectedStrategy}
+              onChange={(e) =>
+                setSelectedStrategy(e.target.value)
+              }
+              className="input"
+            >
+              {strategies.map((strategy) => (
+                <option key={strategy} value={strategy}>
+                  {strategy}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <p className="text-xs text-gray-500 mb-1">
+              Symbol
+            </p>
+
+            <select
+              value={selectedSymbol}
+              onChange={(e) =>
+                setSelectedSymbol(e.target.value)
+              }
+              className="input"
+            >
+              {symbols.map((symbol) => (
+                <option key={symbol} value={symbol}>
+                  {symbol}
+                </option>
+              ))}
+            </select>
+          </div>
+
         </div>
       </div>
 
-      {/* FORM */}
-      {showForm && (
-        <TradeForm
-          onSuccess={() => {
-            setShowForm(false);
-            fetchTrades();
-          }}
-        />
-      )}
-
       {/* KPI CARDS */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+
         <div className="glass-card">
-          <p className="text-sm text-gray-400">Net P&L</p>
+          <p className="text-sm text-gray-500 font-medium">
+            Net P&L
+          </p>
+
           <h2
-            className={`text-xl font-semibold ${
-              totalPnl >= 0 ? "text-green-500" : "text-red-500"
+            className={`text-3xl font-bold mt-2 ${
+              totalPnl >= 0
+                ? "text-green-500"
+                : "text-red-500"
             }`}
           >
             ₹ {totalPnl.toFixed(2)}
@@ -180,124 +196,102 @@ export default function DashboardPage() {
         </div>
 
         <div className="glass-card">
-          <p className="text-sm text-gray-400">Total Trades</p>
-          <h2 className="text-xl font-semibold">{totalTrades}</h2>
-        </div>
+          <p className="text-sm text-gray-500 font-medium">
+            Total Trades
+          </p>
 
-        <div className="glass-card">
-          <p className="text-sm text-gray-400">Wins</p>
-          <h2 className="text-xl font-semibold text-green-500">
-            {wins}
+          <h2 className="text-3xl font-bold mt-2">
+            {totalTrades}
           </h2>
         </div>
 
         <div className="glass-card">
-          <p className="text-sm text-gray-400">Win Rate</p>
-          <h2 className="text-xl font-semibold text-blue-500">
+          <p className="text-sm text-gray-500 font-medium">
+            Win Rate
+          </p>
+
+          <h2 className="text-3xl font-bold text-blue-500 mt-2">
             {winRate}%
           </h2>
         </div>
 
         <div className="glass-card">
-          <p className="text-sm text-gray-400">Avg P&L</p>
-          <h2 className="text-xl font-semibold">
-            ₹ {avgPnl.toFixed(2)}
+          <p className="text-sm text-gray-500 font-medium">
+            Avg P&L
+          </p>
+
+          <h2 className="text-3xl font-bold mt-2">
+            ₹ {avgPnl}
           </h2>
         </div>
+
+      </div>
+
+      {/* BEST & WORST STRATEGY */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+        <div className="glass-card">
+          <p className="text-sm text-gray-500 font-medium">
+            🏆 Best Strategy
+          </p>
+
+          <h2 className="text-2xl font-bold text-green-500 mt-2">
+            {bestStrategy?.[0] || "-"}
+          </h2>
+
+          <p className="mt-1 text-lg font-semibold">
+            ₹ {bestStrategy?.[1]?.toFixed(2) || "0"}
+          </p>
+        </div>
+
+        <div className="glass-card">
+          <p className="text-sm text-gray-500 font-medium">
+            ⚠️ Worst Strategy
+          </p>
+
+          <h2 className="text-2xl font-bold text-red-500 mt-2">
+            {worstStrategy?.[0] || "-"}
+          </h2>
+
+          <p className="mt-1 text-lg font-semibold">
+            ₹ {worstStrategy?.[1]?.toFixed(2) || "0"}
+          </p>
+        </div>
+
       </div>
 
       {/* MAIN GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+
         {/* LEFT */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* CHART */}
-          <div className="glass-card">
-            <div className="flex justify-between items-center mb-2">
-              <h2 className="text-sm font-medium">
-                📈 Trade Chart
-              </h2>
+        <div className="xl:col-span-2 space-y-6">
 
-              <select
-                value={selectedSymbol}
-                onChange={(e) =>
-                  setSelectedSymbol(e.target.value)
-                }
-                className="border px-2 py-1 rounded text-sm"
-              >
-                <option value="RELIANCE.NS">RELIANCE</option>
-                <option value="TCS.NS">TCS</option>
-                <option value="INFY.NS">INFY</option>
-                <option value="HDFCBANK.NS">HDFC BANK</option>
-              </select>
-            </div>
-
-            <TradingChart
-              trades={filteredTrades}
-              symbol={selectedSymbol}
-            />
-          </div>
-
-          {/* EQUITY */}
-          <div className="glass-card">
-            <h2 className="text-sm font-medium mb-2">
-              Equity Curve
-            </h2>
-
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={equityData}>
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Line dataKey="pnl" stroke="#22c55e" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* DAILY */}
-          <div className="glass-card">
-            <h2 className="text-sm font-medium mb-2">
-              Daily P&L
-            </h2>
-
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={dailyData}>
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="pnl" fill="#22c55e" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          {/* STRATEGY STATS */}
+          <StrategyStats trades={filteredTrades} />
 
           {/* TABLE */}
-          <div className="glass-card">
+          <div className="glass-card p-0 overflow-hidden">
             <TradesTable
               trades={filteredTrades}
               onRefresh={fetchTrades}
             />
           </div>
+
         </div>
 
         {/* RIGHT */}
         <div className="space-y-6">
+
           <div className="glass-card">
-            <h2 className="text-sm font-medium mb-2">
-              📅 Calendar
-            </h2>
             <PNLCalendar trades={filteredTrades} />
           </div>
 
           <div className="glass-card">
-            <h2 className="text-sm font-medium mb-2">
-              📊 Summary
-            </h2>
-
-            <div className="space-y-4">
-              <WeeklySummary trades={filteredTrades} />
-              <StrategySummary trades={filteredTrades} />
-            </div>
+            <WeeklySummary trades={filteredTrades} />
           </div>
+
         </div>
+
       </div>
     </div>
   );

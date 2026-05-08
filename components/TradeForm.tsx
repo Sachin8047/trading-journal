@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function TradeForm({ onSuccess }: any) {
   const [form, setForm] = useState({
@@ -11,27 +11,25 @@ export default function TradeForm({ onSuccess }: any) {
     quantity: "",
     stopLoss: "",
     strategy: "",
-    setup: "",
     notes: "",
     entryTime: "",
-    exitTime: "",
-    rating: "",
-    fees: "",
   });
 
-  // ✅ NEW TP STATE
   const [tpLevels, setTpLevels] = useState<number[]>([]);
-
   const [loading, setLoading] = useState(false);
+  const [strategyList, setStrategyList] = useState<string[]>([]);
+
+  // 🔥 Load saved strategies
+  useEffect(() => {
+    const saved = localStorage.getItem("strategies");
+    if (saved) setStrategyList(JSON.parse(saved));
+  }, []);
 
   const handleChange = (field: string, value: any) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  // ✅ TP FUNCTIONS
-  const addTP = () => {
-    setTpLevels([...tpLevels, 0]);
-  };
+  const addTP = () => setTpLevels([...tpLevels, 0]);
 
   const updateTP = (index: number, value: number) => {
     const updated = [...tpLevels];
@@ -47,11 +45,21 @@ export default function TradeForm({ onSuccess }: any) {
     try {
       setLoading(true);
 
+      // ✅ SAVE strategy locally
+      if (form.strategy) {
+        const existing = JSON.parse(localStorage.getItem("strategies") || "[]");
+
+        if (!existing.includes(form.strategy)) {
+          const updated = [...existing, form.strategy];
+          localStorage.setItem("strategies", JSON.stringify(updated));
+        }
+      }
+
       const res = await fetch("/api/trades", {
         method: "POST",
         body: JSON.stringify({
           ...form,
-          tpLevels, // ✅ SEND TP
+          tpLevels,
         }),
       });
 
@@ -66,33 +74,98 @@ export default function TradeForm({ onSuccess }: any) {
   };
 
   return (
-    <div className="space-y-3">
+    <div className="glass-card space-y-4">
 
-      <input placeholder="Symbol" onChange={(e) => handleChange("symbol", e.target.value)} />
+      {/* ROW 1 */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
 
-      <select onChange={(e) => handleChange("type", e.target.value)}>
-        <option value="BUY">BUY</option>
-        <option value="SELL">SELL</option>
-      </select>
+        <input
+          placeholder="Symbol"
+          className="input"
+          onChange={(e) => handleChange("symbol", e.target.value)}
+        />
 
-      <input placeholder="Entry Price" onChange={(e) => handleChange("entryPrice", e.target.value)} />
-      <input placeholder="Exit Price" onChange={(e) => handleChange("exitPrice", e.target.value)} />
-      <input placeholder="Quantity" onChange={(e) => handleChange("quantity", e.target.value)} />
+        <select
+          className="input"
+          onChange={(e) => handleChange("type", e.target.value)}
+        >
+          <option value="BUY">BUY</option>
+          <option value="SELL">SELL</option>
+        </select>
 
-      {/* STOP LOSS */}
-      <input placeholder="Stop Loss" onChange={(e) => handleChange("stopLoss", e.target.value)} />
+        <input
+          type="number"
+          placeholder="Entry"
+          className="input"
+          onChange={(e) => handleChange("entryPrice", e.target.value)}
+        />
 
-      {/* 🔥 TP SECTION */}
-      <div className="mt-3">
-        <p className="font-semibold text-sm">Take Profit Levels</p>
+        <input
+          type="number"
+          placeholder="Exit"
+          className="input"
+          onChange={(e) => handleChange("exitPrice", e.target.value)}
+        />
+
+        <input
+          type="number"
+          placeholder="Qty"
+          className="input"
+          onChange={(e) => handleChange("quantity", e.target.value)}
+        />
+
+        <input
+          type="number"
+          placeholder="SL"
+          className="input"
+          onChange={(e) => handleChange("stopLoss", e.target.value)}
+        />
+      </div>
+
+      {/* ROW 2 */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+
+        {/* 🔥 Strategy with suggestions */}
+        <div>
+          <input
+            placeholder="Strategy"
+            className="input"
+            value={form.strategy}
+            onChange={(e) => handleChange("strategy", e.target.value)}
+            list="strategy-options"
+          />
+
+          <datalist id="strategy-options">
+            {strategyList.map((s, i) => (
+              <option key={i} value={s} />
+            ))}
+          </datalist>
+        </div>
+
+        <input
+          type="datetime-local"
+          className="input"
+          onChange={(e) => handleChange("entryTime", e.target.value)}
+        />
+
+        <textarea
+          placeholder="Notes"
+          className="input resize-none"
+          onChange={(e) => handleChange("notes", e.target.value)}
+        />
+      </div>
+
+      {/* TP SECTION */}
+      <div>
+        <p className="font-medium text-sm mb-2">Take Profit Levels</p>
 
         {tpLevels.map((tp, index) => (
-          <div key={index} className="flex gap-2 mt-1">
+          <div key={index} className="flex gap-2 mb-2">
             <input
               type="number"
               value={tp}
               onChange={(e) => updateTP(index, Number(e.target.value))}
-              className="border p-1 w-full rounded"
+              className="input flex-1"
               placeholder={`TP ${index + 1}`}
             />
             <button
@@ -106,30 +179,17 @@ export default function TradeForm({ onSuccess }: any) {
 
         <button
           onClick={addTP}
-          className="text-green-600 text-sm mt-1"
+          className="text-blue-600 text-sm"
         >
           + Add TP
         </button>
       </div>
 
-      <input placeholder="Strategy" onChange={(e) => handleChange("strategy", e.target.value)} />
-
-      <select onChange={(e) => handleChange("setup", e.target.value)}>
-        <option value="">Setup</option>
-        <option value="Breakout">Breakout</option>
-        <option value="Scalping">Scalping</option>
-        <option value="Reversal">Reversal</option>
-      </select>
-
-      <input type="datetime-local" onChange={(e) => handleChange("entryTime", e.target.value)} />
-      <input type="datetime-local" onChange={(e) => handleChange("exitTime", e.target.value)} />
-
-      <input placeholder="Rating (1-5)" onChange={(e) => handleChange("rating", e.target.value)} />
-      <input placeholder="Fees" onChange={(e) => handleChange("fees", e.target.value)} />
-
-      <textarea placeholder="Notes" onChange={(e) => handleChange("notes", e.target.value)} />
-
-      <button onClick={handleSubmit}>
+      {/* BUTTON */}
+      <button
+        onClick={handleSubmit}
+        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium"
+      >
         {loading ? "Saving..." : "Save Trade"}
       </button>
     </div>
